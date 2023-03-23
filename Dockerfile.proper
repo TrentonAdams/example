@@ -1,0 +1,32 @@
+FROM gradle:7.5.1-jdk17 AS build
+
+# Set the working directory
+WORKDIR /home/gradle/project
+
+# copy gradle files only so we can download dependencies and have them cached
+# this can also be done with BUILDKIT caching options, but not everyone uses
+# those.
+COPY build.gradle gradle.lockfile settings.gradle gradlew /home/gradle/project/
+
+RUN gradle --no-daemon dependencies
+
+COPY src/ /home/gradle/project/
+
+RUN gradle --no-daemon build
+
+# Use the Amazon Linux 2 base image
+FROM amazoncorretto:17-al2-jdk AS system
+
+# critical to run this on one RUN command, so we don't include the packages
+# in the docker FS layer.
+RUN yum update -y \
+  && yum clean all \
+  && rm -rf /var/cache/yum
+
+COPY --from=build  /home/gradle/project/build/libs/takehome-0.0.1-SNAPSHOT.jar /app/
+
+# Expose the port the application will run on
+EXPOSE 8080
+
+# Start the application
+CMD ["java", "-jar", "/app/takehome-0.0.1-SNAPSHOT.jar"]

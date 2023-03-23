@@ -5,7 +5,7 @@ spring:
 logging:
   level:
     com:
-      example: WARN
+      example: DEBUG
 
 country:
   provider:
